@@ -1,3 +1,4 @@
+import sys
 import time
 from collections import deque
 import subprocess
@@ -48,6 +49,18 @@ halfStepSequence = (
 )
 
 
+class ReedSwitch:
+    def __init__(self, pi, pin):
+        pi.set_mode(pin, pigpio.INPUT)
+        #pi.set_pull_up_down(pin, pigpio.PUD_UP)
+        self.pin = pin
+
+    def return_state(self):
+        ret = pi.read(self.pin)
+        print(f"{ret}")
+        return ret
+
+
 class StepperMotor:
 
     def __init__(self, pi, pin1, pin2, pin3, pin4, sequence=fullStepSequence, delayAfterStep=0.00015):
@@ -83,16 +96,30 @@ class StepperMotor:
 
 
 if __name__ == "__main__":
-    stepper = StepperMotor(pi, 26, 13, 21, 20,   sequence= halfStepSequence)
 
-    while True:
-        for i in range(200):
-            print("cw", i)
-            stepper.clockwise_step()
-        time.sleep(0.5)
+    try:
+        stepper = StepperMotor(pi, 26, 13, 21, 20, sequence= halfStepSequence,
+                               delayAfterStep = 0.1)
+        reed = ReedSwitch(pi, 27)
+        while True:
+            for i in range(200):
+                print("cw", i, reed.return_state())
+                stepper.clockwise_step()
 
-        for i in range(200):
-            print("ccw", i)
-            stepper.counter_clockwise_step()
+                if reed.return_state() == True:
+                    break
+            time.sleep(3)
 
-        time.sleep(0.5)
+            for i in range(200):
+                print("ccw", i, reed.return_state())
+                stepper.counter_clockwise_step()
+                if reed.return_state() == True:
+                    break
+            time.sleep(3)
+
+    except:
+        pass
+
+    finally:
+        pi.stop()
+        sys.exit()
